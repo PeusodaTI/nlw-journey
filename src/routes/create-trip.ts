@@ -5,12 +5,14 @@ import { getMailClient } from '../lib/mail'
 import nodemailer from 'nodemailer'
 import { prisma } from '../lib/prisma'
 import { dayjs } from '../lib/dayjs'
+import { ClienteErrors } from '../errors/client-errors'
+import { env } from '../env'
 
 export async function createTrip(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().post('/trips', {
         schema: {
             body: z.object({
-                destination: z.string().min(4),
+                destination: z.string({ required_error: 'Campo destination é obrigatório' }).min(4),
                 //tente converter o starts_at para uma data, caso não consiga retorna erro
                 starts_at: z.coerce.date(),
                 ends_at: z.coerce.date(),
@@ -24,11 +26,11 @@ export async function createTrip(app: FastifyInstance) {
 
         //verifica se a data inicial da viagem é anterior a data atual
         if (dayjs(starts_at).isBefore(new Date())) {
-            throw new Error('Data de início da viagem invalida.')
+            throw new ClienteErrors('Data de início da viagem invalida.')
         }
 
         if (dayjs(ends_at).isBefore(starts_at)) {
-            throw new Error('Data de fim da viagem invalida.')
+            throw new ClienteErrors('Data de fim da viagem invalida.')
         }
 
         const trip = await prisma.trip.create({
@@ -57,7 +59,7 @@ export async function createTrip(app: FastifyInstance) {
         const formattedStartDate = dayjs(starts_at).format('LL')
         const formattedEndDate = dayjs(ends_at).format('LL')
 
-        const confirmationLink = `http://localhost:3333/trips/${trip.id}/confirm`
+        const confirmationLink = `${env.API_BASE_URL}/trips/${trip.id}/confirm`
 
         const mail = await getMailClient()
 

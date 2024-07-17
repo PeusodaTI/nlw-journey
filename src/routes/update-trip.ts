@@ -5,21 +5,22 @@ import { prisma } from '../lib/prisma'
 import { dayjs } from '../lib/dayjs'
 import { ClienteErrors } from '../errors/client-errors'
 
-export async function createActivity(app: FastifyInstance) {
-    app.withTypeProvider<ZodTypeProvider>().post('/trips/:tripId/activies', {
+export async function updateTrip(app: FastifyInstance) {
+    app.withTypeProvider<ZodTypeProvider>().put('/trips/:tripId', {
         schema: {
             params: z.object({
                 tripId: z.string().uuid(),
             }),
             body: z.object({
-                title: z.string().min(4),
+                destination: z.string().min(4),
                 //tente converter o starts_at para uma data, caso não consiga retorna erro
-                occurs_at: z.coerce.date(),
+                starts_at: z.coerce.date(),
+                ends_at: z.coerce.date(),
             })
         },
     }, async(request, response) => {
+        const { destination, starts_at, ends_at } = request.body
         const { tripId } = request.params
-        const { title, occurs_at } = request.body
 
         const trip = await prisma.trip.findUnique({
             where: {
@@ -31,24 +32,28 @@ export async function createActivity(app: FastifyInstance) {
             throw new ClienteErrors('Viagem não encontrada.')
         }
 
-        if (dayjs(occurs_at).isBefore(trip.starts_at)) {
-            throw new ClienteErrors('Data da atividade invalida.')
+        //verifica se a data inicial da viagem é anterior a data atual
+        if (dayjs(starts_at).isBefore(new Date())) {
+            throw new ClienteErrors('Data de início da viagem invalida.')
         }
 
-        if (dayjs(occurs_at).isAfter(trip.ends_at)) {
-            throw new ClienteErrors('Data da atividade invalida.')
+        if (dayjs(ends_at).isBefore(starts_at)) {
+            throw new ClienteErrors('Data de fim da viagem invalida.')
         }
 
-        const activity = await prisma.activity.create({
+        await prisma.trip.update({
+            where: {
+                id: tripId,
+            },
             data: {
-                title,
-                occurs_at,
-                trip_id: tripId,
+                destination,
+                starts_at,
+                ends_at,
             }
         })
 
         return {
-            "activity.id": activity.id
+            "trip.id": trip.id
         }
     })
 }

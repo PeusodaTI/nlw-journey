@@ -2,6 +2,8 @@ import { FastifyInstance } from 'fastify'
 import { ZodTypeProvider } from 'fastify-type-provider-zod'
 import z from 'zod'
 import { prisma } from '../lib/prisma'
+import { ClienteErrors } from '../errors/client-errors'
+import { env } from '../env'
 
 export async function confirmParticipants(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().get('/participants/:participantId/confirm/', {
@@ -21,11 +23,11 @@ export async function confirmParticipants(app: FastifyInstance) {
         })
 
         if (!participant) {
-            throw new Error('Participante não encontrado.')
+            throw new ClienteErrors('Participante não encontrado.')
         }
 
         if (participant.is_confirmed) {
-            return reply.redirect('http://localhost:3000/home')
+            return reply.redirect(`${env.WEB_BASE_URL}/home`)
         }
 
         await prisma.participant.update({
@@ -37,6 +39,6 @@ export async function confirmParticipants(app: FastifyInstance) {
             }
         })
 
-        return reply.redirect(`http://localhost:3000/home`)
+        return reply.redirect(`${env.WEB_BASE_URL}/home`)
     })
 }

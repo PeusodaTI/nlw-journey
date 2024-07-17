@@ -5,6 +5,8 @@ import { prisma } from '../lib/prisma'
 import { getMailClient } from '../lib/mail'
 import { dayjs } from '../lib/dayjs'
 import nodemailer from 'nodemailer'
+import { ClienteErrors } from '../errors/client-errors'
+import { env } from '../env'
 
 export async function confirmTrip(app: FastifyInstance) {
     app.withTypeProvider<ZodTypeProvider>().get('/trips/:tripId/confirm', {
@@ -31,11 +33,11 @@ export async function confirmTrip(app: FastifyInstance) {
         })
 
         if(!trip) {
-            throw new Error('Viagem não encontrada')
+            throw new ClienteErrors('Viagem não encontrada')
         }
 
         if(trip.is_confirmed) {
-            return reply.redirect(`http://localhost:3000/home`)
+            return reply.redirect(`${env.WEB_BASE_URL}/home`)
         }
 
         await prisma.trip.update({
@@ -54,7 +56,7 @@ export async function confirmTrip(app: FastifyInstance) {
 
         await Promise.all(
             trip.participant.map(async (participant) => {
-                const confirmationLink = `http://localhost:3333/participants/${participant.id}/confirm/`
+                const confirmationLink = `${env.API_BASE_URL}/participants/${participant.id}/confirm/`
 
                 const messege = await mail.sendMail({
                     from: {
@@ -82,6 +84,6 @@ export async function confirmTrip(app: FastifyInstance) {
             })
         )
 
-        return reply.redirect(`http://localhost:3000/home`)
+        return reply.redirect(`${env.WEB_BASE_URL}/home`)
     })
 }
